@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-st&3iml$*pt5^z!i&rn$cc#at(c&ck139ul_zd@n%z!zgd-v&w
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "aryandana-pascua-matchattaxstore.pbp.cs.ui.ac.id"]
 
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'main',
 ]
 
 MIDDLEWARE = [
