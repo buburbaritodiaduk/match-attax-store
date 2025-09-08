@@ -20,6 +20,8 @@ Cara saya mengimplementasikan checklist di atas:
                   |d
                Template
 
+    https://drive.google.com/file/d/1_jFYx_Ar6FLqQpuf1x5a_j_inrmoPRgC/view?usp=sharing
+    
     - a: Django akan melakukan pengecekan pada urls.py setelah user mengakses alamat
     - b: views.py akan berfungsi sebagai perantara, jika user membutuhkan database, maka views akan memanggil model.py
     - c: views dapat melakukan read/write pada model.py sesuai dengan kebutuhan yang diperlukan oleh user
