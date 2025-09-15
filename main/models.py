@@ -34,12 +34,26 @@ class News(models.Model):
 """
 
 class Product(models.Model):
+    CATEGORY_CHOICES = [
+        ('base', 'Base Card'),
+        ('man_of_the_match', 'Man of the Match'),
+        ('club_legend', 'Club Legend'),
+        ('rising_star', 'Rising Star'),
+        ('100_club', '100 Club'),
+        ('limited_edition', 'Limited Edition'),
+        ('signature_style', 'Signature Style'),
+        ('hat_trick_hero', 'Hat-Trick Hero'),
+        ('captain', 'Captain'),
+        ('trophy_card', 'Trophy Card'),
+    ]
+
     name = models.CharField(max_length=100)      
-    price = models.IntegerField()               
+    price = models.FloatField()               
     description = models.TextField()             
     thumbnail = models.URLField()                
-    category = models.CharField(max_length=50)   
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='base')
     is_featured = models.BooleanField(default=False)  
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name

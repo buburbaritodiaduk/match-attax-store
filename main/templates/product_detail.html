@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h1>{{ product.name }}</h1>
+
+<p>
+  <b>{{ product.get_category_display }}</b>
+  {% if product.is_featured %} | <b>Featured</b>{% endif %}
+  
+  | <i>Diposting pada: {{ product.created_at|date:"d M Y, H:i" }}</i>
+  
+  | Price: Rp{{ product.price }}
+</p>
+
+{% if product.thumbnail %}
+  <img src="{{ product.thumbnail }}" alt="product thumbnail">
+  <br /><br />
+{% endif %}
+
+<p>{{ product.description }}</p>
+
+{% endblock content %}
