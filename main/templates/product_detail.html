@@ -13,10 +13,16 @@
 </p>
 
 {% if product.thumbnail %}
-  <img src="{{ product.thumbnail }}" alt="product thumbnail">
+  <img src="{{ product.thumbnail }}" alt="product thumbnail" style="width: 300px;">
   <br /><br />
 {% endif %}
 
 <p>{{ product.description }}</p>
+
+{% if product.user %}
+    <p>Author: {{ product.user.username }}</p>
+{% else %}
+    <p>Author: Anonymous</p>
+{% endif %}
 
 {% endblock content %}
