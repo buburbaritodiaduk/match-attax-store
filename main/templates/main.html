@@ -1,61 +1,96 @@
-<h1>Match Attax Store</h1>
+{% extends 'base.html' %}
+{% load static %}
 
-<h5>NPM: </h5>
-<p>{{ npm }}</p>
+{% block meta %}
+<title>Match Attax Store</title>
+{% endblock meta %}
 
-<h5>Name:</h5>
-<p>{{ name }}</p>
+{% block content %}
+{% include 'navbar.html' %} {# Jika Anda punya navbar, jika tidak hapus baris ini #}
+<div class="bg-gray-50 w-full pt-16 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-<h5>Class:</h5>
-<p>{{ class }}</p>
+    <div class="mb-8 text-center">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">Match Attax Store</h1>
+      <p class="text-gray-600">NPM: {{ npm }} | Name: {{ name }} | Class: {{ class }}</p>
+    </div>
 
-<a href="{% url 'main:create_product' %}">
-  <button>+ Add Product</button>
-</a>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <div class="flex space-x-3 mb-4 sm:mb-0">
+        <a href="?filter=all" class="{% if request.GET.filter == 'all' or not request.GET.filter %} bg-green-600 text-white{% else %}bg-white text-gray-700 border border-gray-300{% endif %} px-4 py-2 rounded-md font-medium transition-colors hover:bg-green-600 hover:text-white">
+          All Products
+        </a>
+        <a href="?filter=my" class="{% if request.GET.filter == 'my' %} bg-green-600 text-white{% else %}bg-white text-gray-700 border border-gray-300{% endif %} px-4 py-2 rounded-md font-medium transition-colors hover:bg-green-600 hover:text-white">
+          My Products
+        </a>
+      </div>
+      <div class="flex items-center space-x-4">
+        {% if user.is_authenticated %}
+          <div class="text-sm text-gray-500 hidden sm:block">
+            Last login: {{ last_login }}
+          </div>
+        {% endif %}
+        <a href="{% url 'main:create_product' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium">
+          + Add Product
+        </a>
+      </div>
+    </div>
 
-<a href="{% url 'main:logout' %}">
-  <button>Logout</button>
-</a>
+    {% if not product_list %}
+      <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div class="w-32 h-32 mx-auto mb-4">
+          <img src="{% static 'image/no-news.png' %}" alt="No products available" class="w-full h-full object-contain">
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No Products Found</h3>
+        <p class="text-gray-500 mb-6">There are no products to display. Be the first to add one!</p>
+        <a href="{% url 'main:create_product' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+          + Add Product
+        </a>
+      </div>
+    {% else %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for product in product_list %}
+          <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col">
+            {% if product.thumbnail %}
+              <a href="{% url 'main:show_product' product.id %}">
+                <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-48 object-cover">
+              </a>
+            {% endif %}
+            <div class="p-4 flex flex-col flex-grow">
+              <div class="mb-2">
+                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
+                  {{ product.get_category_display }}
+                </span>
+                {% if product.is_featured %}
+                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-yellow-600 bg-yellow-200">
+                  Featured
+                </span>
+                {% endif %}
+              </div>
+              <h2 class="text-xl font-bold text-gray-900 mb-2">
+                <a href="{% url 'main:show_product' product.id %}" class="hover:text-green-600">{{ product.name }}</a>
+              </h2>
+              <p class="text-gray-600 text-sm mb-1">Price: Rp{{ product.price }}</p>
+              <p class="text-gray-500 text-xs mb-4">
+                Added on: {{ product.created_at|date:"d M Y" }}
+              </p>
+              <p class="text-gray-700 text-sm flex-grow">{{ product.description|truncatewords:20 }}</p>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+              <a href="{% url 'main:show_product' product.id %}" class="text-green-600 hover:text-green-800 font-medium text-sm">Read More</a>
+              
+              {% if product.user == request.user %}
+                <div class="flex space-x-2">
+                  <a href="{% url 'main:edit_product' product.id %}" class="text-blue-500 hover:text-blue-700 text-sm font-medium">Edit</a>
+                  <a href="{% url 'main:delete_product' product.id %}" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</a>
+                </div>
+              {% endif %}
 
-<h5>Sesi terakhir login: {{ last_login }}</h5>
-
-<a href="?filter=all">
-    <button type="button">All Product</button>
-</a>
-<a href="?filter=my">
-    <button type="button">My Product</button>
-</a> 
-
-<hr>
-
-{% if not product_list %}
-<p>Belum Ada Product.</p>
-{% else %}
-
-{% for product in product_list %}
-<div class="product-card">
-  <h2><a href="{% url 'main:show_product' product.id %}">{{ product.name }}</a></h2>
-
-  <p class="product-card-meta">
-    <b>{{ product.get_category_display }}</b>
-    {% if product.is_featured %} | <b>Featured</b>{% endif %}
-    
-    | <i>Dibuat pada: {{ product.created_at|date:"d M Y" }}</i>
-    
-    | Price: Rp{{ product.price }}
-  </p>
-
-  {% if product.thumbnail %}
-    <img src="{{ product.thumbnail }}" alt="thumbnail" width="300">
-    <br />
-  {% endif %}
-
-  <p>{{ product.description|truncatewords:25 }}...</p>
-
-    <p><a href="{% url 'main:show_product' product.id %}"><button>Read More</button></a></p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
-
-  <hr>
-{% endfor %}
-
-{% endif %}
+</div>
+{% endblock content %}

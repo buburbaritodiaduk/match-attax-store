@@ -18,10 +18,11 @@ class Product(models.Model):
         ('trophy_card', 'Trophy Card'),
     ]
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)      
     price = models.FloatField()               
     description = models.TextField()             
-    thumbnail = models.URLField()                
+    thumbnail = models.URLField(max_length=500)                
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='base')
     is_featured = models.BooleanField(default=False)  
     created_at = models.DateTimeField(auto_now_add=True)
