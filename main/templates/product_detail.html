@@ -2,76 +2,171 @@
 {% load static %}
 
 {% block meta %}
-<title>{{ product.name }} - Match Attax Store</title>
+<title>Product Detail - Match Attax Store</title>
 {% endblock meta %}
 
 {% block content %}
-<div class="bg-gray-900 text-gray-100 w-full min-h-screen">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <div class="mb-6">
-            <a href="{% url 'main:show_main' %}" class="text-gray-400 hover:text-white font-medium transition-colors">
-                ← Back to Products
-            </a>
-        </div>
-        
-        <article class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-lg">
-            
-            <div class="p-6 sm:p-8">
-                <div class="flex flex-wrap items-center gap-2 mb-4">
-                    <span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-gray-600 text-gray-200">
-                        {{ product.get_category_display }}
-                    </span>
-                    {% if product.is_featured %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-yellow-700 text-yellow-300">
-                            Featured
-                        </span>
-                    {% endif %}
-                </div>
-                
-                <h1 class="text-3xl sm:text-4xl font-bold text-white leading-tight mb-4">
-                    {{ product.name }}
-                </h1>
-                
-                <div class="flex flex-wrap items-center text-sm text-gray-400 gap-4">
-                    <time datetime="{{ product.created_at|date:'c' }}">
-                        {{ product.created_at|date:"M j, Y g:i A" }}
-                    </time>
-                    <span>Price: Rp{{ product.price }}</span>
-                </div>
-            </div>
-
-            {% if product.thumbnail %}
-                <div class="px-6 sm:px-8">
-                    <img src="{{ product.thumbnail }}" 
-                         alt="{{ product.name }}" 
-                         class="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg filter grayscale contrast-125">
-                </div>
-            {% endif %}
-
-            <div class="p-6 sm:p-8">
-                <div class="prose prose-lg max-w-none prose-invert">
-                    <div class="text-gray-300 leading-relaxed whitespace-pre-line text-base sm:text-lg">
-                        {{ product.description }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-gray-700 p-6 sm:p-8 bg-gray-700">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="font-medium text-white">
-                            {% if product.user %}
-                                <p>Author: {{ product.user.username }}</p>
-                            {% else %}
-                                <p>Author: Anonymous</p>
-                            {% endif %}
-                        </div>
-                        <p class="text-sm text-gray-400">Seller</p>
-                    </div>
-                </div>
-            </div>
-        </article>
+<div class="bg-gray-900 w-full min-h-screen text-gray-100">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="mb-6">
+      <a href="{% url 'main:show_main' %}" class="text-gray-400 hover:text-white font-medium transition-colors">
+        ← Back to Products
+      </a>
     </div>
+      
+    <div id="loading-state" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
+      <svg class="animate-spin h-8 w-8 text-gray-400 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p class="text-gray-400 mt-3">Loading product detail...</p>
+    </div>
+
+    <div id="error-state" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center hidden">
+      <div class="w-16 h-16 mx-auto mb-4 text-red-500 text-5xl">⚠️</div>
+      <h3 class="text-lg font-medium text-white mb-2">Failed to load product</h3>
+      <p class="text-gray-400">Please try again later.</p>
+    </div>
+      
+    <article id="product-content" class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden hidden">
+        
+      <div class="p-6 sm:p-8">
+        <div id="badges-container" class="flex flex-wrap items-center gap-2 mb-4">
+          </div>
+        
+        <h1 id="product-name" class="text-3xl sm:text-4xl font-bold text-white leading-tight mb-2">
+          </h1>
+        
+        <div id="product-price" class="text-3xl font-light text-gray-300 mb-4">
+            </div>
+        
+        <div class="flex flex-wrap items-center text-sm text-gray-400 gap-4">
+          <time id="product-date">
+            </time>
+        </div>
+      </div>
+
+      <div id="product-thumbnail-container" class="px-6 sm:px-8 pb-8 hidden">
+        <img id="product-thumbnail" src="" alt="" class="w-full h-auto max-h-[500px] object-contain rounded-lg">
+      </div>
+
+      <div class="p-6 sm:p-8 border-t border-gray-700">
+        <div id="product-description" class="text-gray-300 leading-relaxed whitespace-pre-line text-base sm:text-lg">
+          </div>
+      </div>
+
+      <div class="border-t border-gray-700 p-6 sm:p-8 bg-gray-900">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-medium text-white">
+              <p id="product-author">Loading...</p>
+            </div>
+            <p class="text-sm text-gray-400">Added by</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
 </div>
+
+<script>
+const PRODUCT_ID = "{{ product.id }}";
+const PRODUCT_DETAIL_ENDPOINT = `{% url 'main:show_json_by_id' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', PRODUCT_ID);
+
+const loadingState = document.getElementById('loading-state');
+const errorState = document.getElementById('error-state');
+const productContent = document.getElementById('product-content');
+const badgesContainer = document.getElementById('badges-container');
+const productName = document.getElementById('product-name');
+const productPrice = document.getElementById('product-price');
+const productDate = document.getElementById('product-date');
+const productThumbnailContainer = document.getElementById('product-thumbnail-container');
+const productThumbnail = document.getElementById('product-thumbnail');
+const productDescription = document.getElementById('product-description');
+const productAuthor = document.getElementById('product-author');
+
+function showState(state) {
+    loadingState.classList.toggle('hidden', state !== 'loading');
+    errorState.classList.toggle('hidden', state !== 'error');
+    productContent.classList.toggle('hidden', state !== 'ready');
+}
+
+function getProductCategoryLabel(categoryCode) {
+    const categoryMapping = {
+        'base': 'Base Card',
+        'man_of_the_match': 'Man of the Match',
+        'club_legend': 'Club Legend',
+        'rising_star': 'Rising Star',
+        '100_club': '100 Club',
+        'limited_edition': 'Limited Edition',
+        'signature_style': 'Signature Style',
+        'hat_trick_hero': 'Hat-Trick Hero',
+        'captain': 'Captain',
+        'trophy_card': 'Trophy Card',
+    };
+    return categoryMapping[categoryCode] || categoryCode;
+}
+
+function renderProduct(product) {
+    productName.textContent = product.name;
+    document.title = `${product.name} - Match Attax Store`;
+    
+    productPrice.textContent = `Rp${product.price}`;
+    
+    badgesContainer.innerHTML = '';
+    
+    const categoryBadge = document.createElement('span');
+    categoryBadge.className = 'text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-200 bg-gray-600';
+    categoryBadge.textContent = getProductCategoryLabel(product.category);
+    badgesContainer.appendChild(categoryBadge);
+    
+    if (product.is_featured) {
+        const featuredBadge = document.createElement('span');
+        featuredBadge.className = 'text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-yellow-300 bg-yellow-700';
+        featuredBadge.textContent = 'Featured';
+        badgesContainer.appendChild(featuredBadge);
+    }
+    
+    const formattedDate = new Date(product.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    productDate.textContent = `Added on ${formattedDate}`;
+    
+    if (product.thumbnail) {
+        productThumbnail.src = product.thumbnail;
+        productThumbnail.alt = product.name;
+        productThumbnailContainer.classList.remove('hidden');
+    } else {
+        productThumbnailContainer.classList.add('hidden');
+    }
+    
+    productDescription.textContent = product.description;
+    
+    const authorName = product.user_username || 'Anonymous';
+    productAuthor.textContent = authorName;
+}
+
+async function loadProductDetail() {
+    try {
+        showState('loading');
+        
+        const response = await fetch(PRODUCT_DETAIL_ENDPOINT, {
+            headers: { 'Accept': 'application/json' },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch product detail');
+        }
+
+        const productData = await response.json();
+        renderProduct(productData);
+        showState('ready');
+    } catch (error) {
+        console.error('Error loading product detail:', error);
+        showState('error');
+    }
+}
+
+loadProductDetail();
+</script>
+
 {% endblock content %}

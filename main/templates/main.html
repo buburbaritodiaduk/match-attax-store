@@ -6,91 +6,198 @@
 {% endblock meta %}
 
 {% block content %}
-{% include 'navbar.html' %} {# Jika Anda punya navbar, jika tidak hapus baris ini #}
-<div class="bg-gray-900 w-full pt-16 min-h-screen text-gray-100"> {# Changed background to dark gray #}
+{% include 'navbar.html' %}
+<div class="bg-gray-900 w-full pt-16 min-h-screen text-gray-100">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
+    
     <div class="mb-8 text-center">
-      <h1 class="text-4xl font-bold text-white mb-2">Match Attax Store</h1> {# Changed text to white #}
-      <p class="text-gray-400">NPM: {{ npm }} | Name: {{ name }} | Class: {{ class }}</p> {# Muted text color #}
+      <h1 class="text-4xl font-bold text-white mb-2">Match Attax Store</h1>
+      <p class="text-gray-400">NPM: {{ npm }} | Name: {{ name }} | Class: {{ class }}</p>
     </div>
 
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 bg-gray-800 rounded-lg border border-gray-700 p-4 shadow-lg"> {# Darker background, border, and shadow #}
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 bg-gray-800 rounded-lg border border-gray-700 p-4 shadow-lg">
       <div class="flex space-x-3 mb-4 sm:mb-0">
-        <a href="?filter=all" class="{% if request.GET.filter == 'all' or not request.GET.filter %} bg-gray-600 text-white{% else %}bg-gray-700 text-gray-300 border border-gray-600{% endif %} px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white">
+        <a id="filter-all" class="cursor-pointer bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500">
           All Products
         </a>
-        <a href="?filter=my" class="{% if request.GET.filter == 'my' %} bg-gray-600 text-white{% else %}bg-gray-700 text-gray-300 border border-gray-600{% endif %} px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white">
+        <a id="filter-my" class="cursor-pointer bg-gray-700 text-gray-300 border border-gray-600 px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white">
           My Products
         </a>
       </div>
       <div class="flex items-center space-x-4">
         {% if user.is_authenticated %}
-          <div class="text-sm text-gray-400 hidden sm:block"> {# Muted text color #}
+          <div class="text-sm text-gray-400 hidden sm:block">
             Last login: {{ last_login }}
           </div>
         {% endif %}
-        <a href="{% url 'main:create_product' %}" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"> {# Darker accent button #}
+        <button type="button" onclick="showModal()" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium">
           + Add Product
-        </a>
+        </button>
       </div>
     </div>
 
-    {% if not product_list %}
-      <div class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center shadow-lg"> {# Darker background and border #}
-        <div class="w-32 h-32 mx-auto mb-4">
-          <img src="{% static 'image/no-news.png' %}" alt="No products available" class="w-full h-full object-contain filter grayscale invert"> {# Added grayscale and invert for monochrome effect on image #}
-        </div>
-        <h3 class="text-lg font-medium text-white mb-2">No Products Found</h3> {# Changed text to white #}
-        <p class="text-gray-400 mb-6">There are no products to display. Be the first to add one!</p> {# Muted text color #}
-        <a href="{% url 'main:create_product' %}" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"> {# Darker accent button #}
-          + Add Product
-        </a>
-      </div>
-    {% else %}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for product in product_list %}
-          <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden flex flex-col"> {# Darker background, border, and shadow #}
-            {% if product.thumbnail %}
-              <a href="{% url 'main:show_product' product.id %}">
-                <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="w-full h-48 object-cover filter grayscale contrast-125"> {# Added grayscale and contrast for monochrome effect #}
-              </a>
-            {% endif %}
-            <div class="p-4 flex flex-col flex-grow">
-              <div class="mb-2">
-                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-200 bg-gray-600"> {# Muted badge color #}
-                  {{ product.get_category_display }}
-                </span>
-                {% if product.is_featured %}
-                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-yellow-300 bg-yellow-700"> {# Kept a subtle yellow for featured, but darker #}
-                  Featured
-                </span>
-                {% endif %}
-              </div>
-              <h2 class="text-xl font-bold text-white mb-2"> {# Changed text to white #}
-                <a href="{% url 'main:show_product' product.id %}" class="hover:text-gray-400">{{ product.name }}</a> {# Muted hover color #}
-              </h2>
-              <p class="text-gray-300 text-sm mb-1">Price: Rp{{ product.price }}</p> {# Muted text color #}
-              <p class="text-gray-400 text-xs mb-4"> {# Muted text color #}
-                Added on: {{ product.created_at|date:"d M Y" }}
-              </p>
-              <p class="text-gray-200 text-sm flex-grow">{{ product.description|truncatewords:20 }}</p> {# Muted text color #}
-            </div>
-            <div class="px-4 py-3 bg-gray-700 border-t border-gray-600 flex items-center justify-between"> {# Darker footer background and border #}
-              <a href="{% url 'main:show_product' product.id %}" class="text-gray-400 hover:text-gray-200 font-medium text-sm">Read More</a> {# Muted link color #}
-              
-              {% if product.user == request.user %}
-                <div class="flex space-x-2">
-                  <a href="{% url 'main:edit_product' product.id %}" class="text-gray-400 hover:text-gray-200 text-sm font-medium">Edit</a> {# Muted link color #}
-                  <a href="{% url 'main:delete_product' product.id %}" class="text-red-500 hover:text-red-300 text-sm font-medium">Delete</a> {# Kept red for delete, but slightly muted hover #}
-                </div>
-              {% endif %}
+    <div id="loading" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center hidden">
+      <svg class="animate-spin h-8 w-8 text-gray-400 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p class="text-gray-400 mt-3">Loading products...</p>
+    </div>
 
-            </div>
-          </div>
-        {% endfor %}
+    <div id="error" class="hidden"></div>
+
+    <div id="grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <div id="empty" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center shadow-lg hidden">
+      <div class="w-32 h-32 mx-auto mb-4">
+        <img src="{% static 'image/no-news.png' %}" alt="No products available" class="w-full h-full object-contain filter grayscale invert">
       </div>
-    {% endif %}
+      <h3 class="text-lg font-medium text-white mb-2">No Products Found</h3>
+      <p class="text-gray-400 mb-6">There are no products to display. Be the first to add one!</p>
+      <button type="button" onclick="showModal()" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+        + Add Product
+      </button>
+    </div>
   </div>
 </div>
+
+<script>
+// Configuration
+const PRODUCTS_API_ENDPOINT = "{% url 'main:show_json' %}";
+const CURRENT_USER_ID = "{{ user.id|default_if_none:'' }}";
+
+// DOM Elements
+const loadingSpinner = document.getElementById('loading');
+const errorMessage = document.getElementById('error');
+const emptyStateDisplay = document.getElementById('empty');
+const productGridContainer = document.getElementById('grid');
+const showAllProductsButton = document.getElementById('filter-all');
+const showMyProductsButton = document.getElementById('filter-my');
+
+// Application State
+let activeFilter = 'all';
+let allProductsData = [];
+
+// Updates the visual state of the filter buttons.
+function updateFilterButtonsAppearance() {
+  if (!showAllProductsButton || !showMyProductsButton) return;
+  
+  const activeClasses = 'cursor-pointer bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500';
+  const inactiveClasses = 'cursor-pointer bg-gray-700 text-gray-300 border border-gray-600 px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white';
+
+  if (activeFilter === 'all') {
+    showAllProductsButton.className = activeClasses;
+    showMyProductsButton.className = inactiveClasses;
+  } else {
+    showMyProductsButton.className = activeClasses;
+    showAllProductsButton.className = inactiveClasses;
+  }
+}
+
+// Shows or hides page sections based on the current state.
+function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
+  loadingSpinner.classList.toggle('hidden', !showLoading);
+  errorMessage.classList.toggle('hidden', !showError);
+  emptyStateDisplay.classList.toggle('hidden', !showEmpty);
+  productGridContainer.classList.toggle('hidden', !showGrid);
+}
+
+// Converts a category slug into a human-readable string.
+function getReadableProductCategory(categoryCode) {
+  const categoryMapping = { 'base': 'Base Card', 'man_of_the_match': 'Man of the Match', 'club_legend': 'Club Legend', 'rising_star': 'Rising Star', '100_club': '100 Club', 'limited_edition': 'Limited Edition', 'signature_style': 'Signature Style', 'hat_trick_hero': 'Hat-Trick Hero', 'captain': 'Captain', 'trophy_card': 'Trophy Card' };
+  return categoryMapping[categoryCode] || categoryCode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Creates the HTML element for a single product card.
+function buildProductCardElement(product) {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden flex flex-col';
+    
+    const detailLink = `{% url 'main:show_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
+    const editLink = `{% url 'main:edit_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
+    const deleteLink = `{% url 'main:delete_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
+    
+    const name = DOMPurify.sanitize(product.name);
+    const price = DOMPurify.sanitize(String(product.price));
+    const description = DOMPurify.sanitize(product.description);
+    const thumbnail = DOMPurify.sanitize(product.thumbnail);
+    const formattedDate = DOMPurify.sanitize(new Date(product.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+    const categoryLabel = DOMPurify.sanitize(getReadableProductCategory(product.category));
+    const featuredBadge = product.is_featured ? `<span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-yellow-300 bg-yellow-700">Featured</span>` : '';
+    const thumbnailHtml = thumbnail ? `<a href="${detailLink}"><img src="${thumbnail}" alt="${name}" class="w-full h-48 object-cover filter grayscale contrast-125"></a>` : '';
+    const editDeleteHtml = CURRENT_USER_ID && product.user_id && Number(CURRENT_USER_ID) === Number(product.user_id) ? `<div class="flex space-x-2"><a href="${editLink}" class="text-gray-400 hover:text-gray-200 text-sm font-medium">Edit</a><a href="${deleteLink}" class="text-red-500 hover:text-red-300 text-sm font-medium">Delete</a></div>` : '';
+
+    cardElement.innerHTML = `<div class="p-4 flex flex-col flex-grow"><div class="mb-2 flex space-x-2"><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-200 bg-gray-600">${categoryLabel}</span>${featuredBadge}</div><h2 class="text-xl font-bold text-white mb-2"><a href="${detailLink}" class="hover:text-gray-400">${name}</a></h2><p class="text-gray-300 text-sm mb-1">Price: Rp${price}</p><p class="text-gray-400 text-xs mb-4">Added on: ${formattedDate}</p><p class="text-gray-200 text-sm flex-grow">${description.substring(0, 100)}...</p></div><div class="px-4 py-3 bg-gray-700 border-t border-gray-600 flex items-center justify-between"><a href="${detailLink}" class="text-gray-400 hover:text-gray-200 font-medium text-sm">Read More</a>${editDeleteHtml}</div>`;
+    if (thumbnail) { cardElement.insertAdjacentHTML('afterbegin', thumbnailHtml); }
+    return cardElement;
+}
+
+// Renders all product cards into the grid.
+function renderAllProductCards(productItems) {
+  productGridContainer.innerHTML = '';
+  productItems.forEach(productItem => {
+    const cardElement = buildProductCardElement(productItem);
+    productGridContainer.appendChild(cardElement);
+  });
+}
+
+// Filters and displays products based on the active filter.
+function filterAndDisplayProducts() {
+  updateFilterButtonsAppearance();
+  const filteredProducts = activeFilter === 'all' ? allProductsData : allProductsData.filter(product => product.user_id && Number(product.user_id) === Number(CURRENT_USER_ID));
+  if (filteredProducts.length === 0) {
+    displayPageSection({ showEmpty: true });
+  } else {
+    renderAllProductCards(filteredProducts);
+    displayPageSection({ showGrid: true });
+  }
+}
+
+// Fetches product data from the server API.
+async function fetchProductsFromServer() {
+  try {
+    displayPageSection({ showLoading: true });
+    const response = await fetch(PRODUCTS_API_ENDPOINT, { headers: { 'Accept': 'application/json' } });
+    if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+    const productsData = await response.json();
+    allProductsData = productsData || [];
+    filterAndDisplayProducts();
+  } catch (error) {
+    console.error('Error loading products:', error);
+    displayPageSection({ showError: true });
+  }
+}
+
+// Sets up event listeners and fetches initial data.
+function initializeProductPage() {
+  showAllProductsButton.addEventListener('click', () => {
+    activeFilter = 'all';
+    filterAndDisplayProducts();
+  });
+  showMyProductsButton.addEventListener('click', () => {
+    activeFilter = 'my';
+    filterAndDisplayProducts();
+  });
+  fetchProductsFromServer();
+}
+
+// Initialize the page and event listeners
+initializeProductPage();
+
+// Event listener untuk refresh data setelah produk baru ditambahkan
+document.addEventListener('productAdded', function() {
+    fetchProductsFromServer();
+});
+
+// Event listener ini sebaiknya ada di file yang sama dengan modal
+// atau pastikan modal sudah ada di DOM saat skrip ini dijalankan.
+// Jika modal di-load terpisah, event listener ini bisa dipindah.
+if (document.getElementById("productForm")) {
+    document.getElementById("productForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        addProduct();
+    });
+}
+</script>
+
 {% endblock content %}

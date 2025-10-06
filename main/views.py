@@ -1,15 +1,18 @@
 from django.shortcuts import render, redirect, get_object_or_404, reverse
 from main.forms import ProductForm
 from main.models import Product
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core import serializers
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import datetime
-from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils.html import strip_tags
+
 
 @login_required(login_url='/login')
 def show_main(request):
@@ -61,10 +64,31 @@ def show_xml(request):
     xml_data = serializers.serialize("xml", product_list)
     return HttpResponse(xml_data, content_type="application/xml")
 
+# Jangan lupa import di bagian atas file views.py
+from django.http import JsonResponse
+from .models import Product # Sesuaikan dengan lokasi models.py kamu
+
 def show_json(request):
+    # Mengambil semua objek dari model Product
     product_list = Product.objects.all()
-    json_data = serializers.serialize("json", product_list)
-    return HttpResponse(json_data, content_type="application/json")
+    
+    # Mengubah queryset menjadi list of dictionaries
+    data = [
+        {
+            'id': str(product.id),         
+            'name': product.name,           
+            'price': product.price,        
+            'description': product.description, 
+            'thumbnail': product.thumbnail,
+            'category': product.category,
+            'is_featured': product.is_featured,
+            'created_at': product.created_at.isoformat(), 
+            'user_id': product.user_id,  
+        }
+        for product in product_list
+    ]
+
+    return JsonResponse(data, safe=False)
 
 def show_xml_by_id(request, product_id):
     try:
@@ -77,12 +101,24 @@ def show_xml_by_id(request, product_id):
 
 def show_json_by_id(request, product_id):
     try:
-        product_item = Product.objects.get(pk=product_id)
-        json_data = serializers.serialize("json", [product_item])
-        return HttpResponse(json_data, content_type="application/json")
+        product = Product.objects.select_related('user').get(pk=product_id)
+        
+        data = {
+            'id': str(product.id),
+            'name': product.name,           
+            'price': product.price,         
+            'description': product.description, 
+            'category': product.category,
+            'thumbnail': product.thumbnail,
+            'is_featured': product.is_featured,
+            'created_at': product.created_at.isoformat(),
+            'user_id': product.user_id,
+            'user_username': product.user.username if product.user else None,
+        }
+        return JsonResponse(data)
 
     except Product.DoesNotExist:
-        return HttpResponse(Status=404)
+        return JsonResponse({'detail': 'Product not found'}, status=404)
 
 def register(request):
     form = UserCreationForm()
@@ -134,9 +170,44 @@ def edit_product(request, id):
     return render(request, "edit_product.html", context)
 
 def delete_product(request, id):
-    # Get mood berdasarkan id
     product = Product.objects.get(pk = id)
-    # Hapus mood
     product.delete()
-    # Kembali ke halaman awal
     return HttpResponseRedirect(reverse('main:show_main'))
+
+@csrf_exempt
+@require_POST
+def add_product_ajax(request):
+    title = strip_tags(request.POST.get("title")) # strip HTML tags!
+    content = strip_tags(request.POST.get("content")) # strip HTML tags!
+    name = request.POST.get("name")
+    price = request.POST.get("price")
+    description = request.POST.get("description")
+    category = request.POST.get("category")
+    thumbnail = request.POST.get("thumbnail")
+    is_featured = request.POST.get("is_featured") == 'on'
+    user = request.user
+
+    new_product = Product(
+        name=name,
+        price=price,
+        description=description,
+        category=category,
+        thumbnail=thumbnail,
+        is_featured=is_featured,
+        user=user
+    )
+    new_product.save()
+
+    data = {
+        'id': str(new_product.id),
+        'name': new_product.name,
+        'price': new_product.price,
+        'description': new_product.description,
+        'category': new_product.category,
+        'thumbnail': new_product.thumbnail,
+        'is_featured': new_product.is_featured,
+        'created_at': new_product.created_at.isoformat(),
+        'user_id': new_product.user.id,
+    }
+    
+    return JsonResponse(data, status=201)
