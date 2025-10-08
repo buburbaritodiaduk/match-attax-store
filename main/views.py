@@ -120,40 +120,51 @@ def show_json_by_id(request, product_id):
     except Product.DoesNotExist:
         return JsonResponse({'detail': 'Product not found'}, status=404)
 
-def register(request):
-    form = UserCreationForm()
+# main/views.py
+import json # Pastikan ini ada di atas
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 
-    if request.method == "POST":
+@csrf_exempt
+def register_ajax(request):
+    if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Your account has been successfully created!')
-            return redirect('main:login')
-    context = {'form':form}
-    return render(request, 'register.html', context)
+            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
+        else:
+            # Kirim error form sebagai JSON
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+    # Me-render halaman jika diakses via GET
+    return render(request, 'register.html', {'form': UserCreationForm()})
 
-def login_user(request):
+@csrf_exempt
+def login_ajax(request):
     if request.method == 'POST':
-        form = AuthenticationForm(data=request.POST)
+        # Data dikirim sebagai JSON, jadi kita perlu load dari request.body
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        user = authenticate(request, username=username, password=password)
 
-        if form.is_valid():
-            user = form.get_user()
+        if user is not None:
             login(request, user)
-            response = HttpResponseRedirect(reverse("main:show_main"))
+            response = JsonResponse({'status': 'success', 'message': 'Login successful!'})
             response.set_cookie('last_login', str(datetime.datetime.now()))
             return response
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid username or password'}, status=401)
+    # Me-render halaman jika diakses via GET
+    return render(request, 'login.html', {'form': AuthenticationForm()})
 
+@csrf_exempt
+def logout_ajax(request):
+    if request.method == "POST":
+        logout(request)
+        return JsonResponse({"status": "success", "message": "Logout successful!"})
     else:
-        form = AuthenticationForm(request)
-    
-    context = {'form': form}
-    return render(request, 'login.html', context)
-
-def logout_user(request):
-    logout(request)
-    response = HttpResponseRedirect(reverse('main:login'))
-    response.delete_cookie('last_login')
-    return response
+        # kalau bukan POST (misalnya user klik langsung link), redirect aja biar aman
+        logout(request)
+        return redirect('main:login')
 
 def edit_product(request, id):
     product = get_object_or_404(Product, pk=id)
@@ -177,16 +188,16 @@ def delete_product(request, id):
 @csrf_exempt
 @require_POST
 def add_product_ajax(request):
-    title = strip_tags(request.POST.get("title")) # strip HTML tags!
-    content = strip_tags(request.POST.get("content")) # strip HTML tags!
-    name = request.POST.get("name")
+    # Pastikan kamu mengambil "name", BUKAN "title"
+    name = strip_tags(request.POST.get("name"))
     price = request.POST.get("price")
-    description = request.POST.get("description")
+    description = strip_tags(request.POST.get("description"))
     category = request.POST.get("category")
-    thumbnail = request.POST.get("thumbnail")
+    thumbnail = strip_tags(request.POST.get("thumbnail"))
     is_featured = request.POST.get("is_featured") == 'on'
     user = request.user
 
+    # Buat objek Product baru dengan variabel yang benar
     new_product = Product(
         name=name,
         price=price,
@@ -198,6 +209,7 @@ def add_product_ajax(request):
     )
     new_product.save()
 
+    # Siapkan data JSON untuk dikirim kembali
     data = {
         'id': str(new_product.id),
         'name': new_product.name,
@@ -211,3 +223,39 @@ def add_product_ajax(request):
     }
     
     return JsonResponse(data, status=201)
+
+@csrf_exempt
+@require_POST
+def update_product_ajax(request, product_id):
+    try:
+        product = Product.objects.get(pk=product_id)
+        
+        # Ambil data baru dari form dan bersihkan
+        product.name = strip_tags(request.POST.get("name"))
+        product.price = request.POST.get("price")
+        product.description = strip_tags(request.POST.get("description"))
+        product.category = request.POST.get("category")
+        product.thumbnail = strip_tags(request.POST.get("thumbnail"))
+        product.is_featured = request.POST.get("is_featured") == 'on'
+        
+        # Simpan perubahan ke database
+        product.save()
+        
+        return JsonResponse({'status': 'success', 'message': 'Product updated successfully'}, status=200)
+
+    except Product.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Product not found'}, status=404)
+    
+@csrf_exempt
+@require_POST # Menggunakan POST untuk keamanan, agar tidak bisa dihapus via URL biasa
+def delete_product_ajax(request, product_id):
+    try:
+        product = Product.objects.get(pk=product_id)
+        # Pastikan hanya user yang membuat produk yang bisa menghapusnya
+        if product.user == request.user:
+            product.delete()
+            return JsonResponse({'status': 'success', 'message': 'Product deleted successfully'}, status=200)
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Unauthorized'}, status=403)
+    except Product.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Product not found'}, status=404)

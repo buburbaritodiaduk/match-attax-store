@@ -25,18 +25,24 @@
         </a>
       </div>
       <div class="flex items-center space-x-4">
+        <button id="refresh-button" type="button" class="p-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 hover:text-white transition-colors" title="Refresh Products">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.899 2.139l.23.69a1 1 0 01-1.956.652l-.23-.69a5.002 5.002 0 00-8.49-1.996l-.944.314A1 1 0 013 9.44V6a1 1 0 01-2 0V3a1 1 0 011-1zm12 14a1 1 0 01-1-1v-2.101a7.002 7.002 0 01-11.899-2.139l-.23-.69a1 1 0 011.956-.652l.23.69a5.002 5.002 0 008.49 1.996l.944-.314A1 1 0 0117 10.56V14a1 1 0 012 0v3a1 1 0 01-1 1z" clip-rule="evenodd" />
+          </svg>
+        </button>
+
         {% if user.is_authenticated %}
           <div class="text-sm text-gray-400 hidden sm:block">
             Last login: {{ last_login }}
           </div>
         {% endif %}
-        <button type="button" onclick="showModal()" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium">
+        <button type="button" onclick="openModal('create')" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium">
           + Add Product
         </button>
       </div>
     </div>
 
-    <div id="loading" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center hidden">
+    <div id="loading" class="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
       <svg class="animate-spin h-8 w-8 text-gray-400 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
@@ -44,7 +50,10 @@
       <p class="text-gray-400 mt-3">Loading products...</p>
     </div>
 
-    <div id="error" class="hidden"></div>
+    <div id="error" class="hidden bg-gray-800 p-12 text-center rounded-lg border border-red-500">
+        <h3 class="text-lg font-medium text-red-400 mb-2">Oops! Something went wrong.</h3>
+        <p class="text-gray-400">Failed to load product data. Please try again later.</p>
+    </div>
 
     <div id="grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
@@ -54,7 +63,7 @@
       </div>
       <h3 class="text-lg font-medium text-white mb-2">No Products Found</h3>
       <p class="text-gray-400 mb-6">There are no products to display. Be the first to add one!</p>
-      <button type="button" onclick="showModal()" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+      <button type="button" onclick="openModal('create')" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
         + Add Product
       </button>
     </div>
@@ -62,11 +71,12 @@
 </div>
 
 <script>
-// Configuration
+// ===================================================================
+// Konfigurasi & Elemen DOM
+// ===================================================================
 const PRODUCTS_API_ENDPOINT = "{% url 'main:show_json' %}";
 const CURRENT_USER_ID = "{{ user.id|default_if_none:'' }}";
 
-// DOM Elements
 const loadingSpinner = document.getElementById('loading');
 const errorMessage = document.getElementById('error');
 const emptyStateDisplay = document.getElementById('empty');
@@ -74,49 +84,162 @@ const productGridContainer = document.getElementById('grid');
 const showAllProductsButton = document.getElementById('filter-all');
 const showMyProductsButton = document.getElementById('filter-my');
 
-// Application State
 let activeFilter = 'all';
 let allProductsData = [];
 
-// Updates the visual state of the filter buttons.
-function updateFilterButtonsAppearance() {
-  if (!showAllProductsButton || !showMyProductsButton) return;
-  
-  const activeClasses = 'cursor-pointer bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500';
-  const inactiveClasses = 'cursor-pointer bg-gray-700 text-gray-300 border border-gray-600 px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white';
+// ===================================================================
+// Fungsi Modal dan CRUD
+// ===================================================================
 
-  if (activeFilter === 'all') {
-    showAllProductsButton.className = activeClasses;
-    showMyProductsButton.className = inactiveClasses;
-  } else {
-    showMyProductsButton.className = activeClasses;
-    showAllProductsButton.className = inactiveClasses;
-  }
+// --- Fungsi Utama untuk Membuka Modal (Bisa Create & Update) ---
+async function openModal(mode = 'create', productId = null) {
+    const modal = document.getElementById('crudModal');
+    const form = document.getElementById('productForm');
+    const titleElement = document.querySelector('#crudModal h3');
+    const submitButton = document.getElementById('submitProduct');
+
+    if (mode === 'update' && productId) {
+        // --- Mode Update ---
+        const detailUrl = `{% url 'main:show_json_by_id' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', productId);
+        const response = await fetch(detailUrl);
+        const product = await response.json();
+
+        form.name.value = product.name;
+        form.price.value = product.price;
+        form.description.value = product.description;
+        form.category.value = product.category;
+        form.thumbnail.value = product.thumbnail;
+        form.is_featured.checked = product.is_featured;
+
+        titleElement.textContent = 'Update Product';
+        submitButton.textContent = 'Save Changes';
+        form.onsubmit = () => { updateProduct(productId); return false; }; // Pencegahan reload
+
+    } else {
+        // --- Mode Create (Default) ---
+        titleElement.textContent = 'Add New Product';
+        submitButton.textContent = 'Add Product';
+        form.reset();
+        form.onsubmit = () => { addProduct(); return false; }; // Pencegahan reload
+    }
+    modal.classList.remove('hidden');
 }
 
-// Shows or hides page sections based on the current state.
-function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
-  loadingSpinner.classList.toggle('hidden', !showLoading);
-  errorMessage.classList.toggle('hidden', !showError);
-  emptyStateDisplay.classList.toggle('hidden', !showEmpty);
-  productGridContainer.classList.toggle('hidden', !showGrid);
+function hideModal() {
+    document.getElementById('crudModal').classList.add('hidden');
 }
 
-// Converts a category slug into a human-readable string.
+function showDeleteModal(productId, productName) {
+    const modal = document.getElementById('deleteModal');
+    document.getElementById('deleteProductName').textContent = `"${productName}"`;
+    document.getElementById('confirmDeleteBtn').onclick = () => deleteProduct(productId);
+    modal.classList.remove('hidden');
+}
+
+function hideDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+// --- Fungsi untuk Mengirim Data (Create) ---
+async function addProduct() {
+    const form = document.getElementById('productForm');
+    await fetch("{% url 'main:add_product_ajax' %}", {
+        method: "POST",
+        body: new FormData(form)
+    });
+    hideModal();
+    document.dispatchEvent(new CustomEvent('productRefreshed'));
+    // showToast('Product added successfully!');
+}
+
+// --- Fungsi untuk Mengirim Data (Update) ---
+async function updateProduct(productId) {
+    const form = document.getElementById('productForm');
+    const updateUrl = `{% url 'main:update_product_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', productId);
+    await fetch(updateUrl, {
+        method: "POST",
+        body: new FormData(form)
+    });
+    hideModal();
+    document.dispatchEvent(new CustomEvent('productRefreshed'));
+    // showToast('Product updated successfully!');
+}
+
+// --- Fungsi untuk Mengirim Data (Delete) ---
+async function deleteProduct(productId) {
+    const deleteUrl = `{% url 'main:delete_product_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', productId);
+    await fetch(deleteUrl, { method: "POST" });
+    hideDeleteModal();
+    document.dispatchEvent(new CustomEvent('productRefreshed'));
+    // showToast('Product deleted successfully!');
+}
+
 function getReadableProductCategory(categoryCode) {
-  const categoryMapping = { 'base': 'Base Card', 'man_of_the_match': 'Man of the Match', 'club_legend': 'Club Legend', 'rising_star': 'Rising Star', '100_club': '100 Club', 'limited_edition': 'Limited Edition', 'signature_style': 'Signature Style', 'hat_trick_hero': 'Hat-Trick Hero', 'captain': 'Captain', 'trophy_card': 'Trophy Card' };
-  return categoryMapping[categoryCode] || categoryCode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const categoryMapping = { 
+        'base': 'Base Card', 
+        'man_of_the_match': 'Man of the Match', 
+        'club_legend': 'Club Legend', 
+        'rising_star': 'Rising Star', 
+        '100_club': '100 Club', 
+        'limited_edition': 'Limited Edition', 
+        'signature_style': 'Signature Style', 
+        'hat_trick_hero': 'Hat-Trick Hero', 
+        'captain': 'Captain', 
+        'trophy_card': 'Trophy Card' 
+    };
+    return categoryMapping[categoryCode] || categoryCode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-// Creates the HTML element for a single product card.
+// ===================================================================
+// Fungsi Render Tampilan & Data
+// ===================================================================
+
+async function fetchProductsFromServer() {
+    try {
+        displayPageSection({ showLoading: true });
+        const response = await fetch(PRODUCTS_API_ENDPOINT);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        allProductsData = await response.json();
+        filterAndDisplayProducts();
+    } catch (error) {
+        console.error('Error:', error);
+        displayPageSection({ showError: true });
+    }
+}
+
+function filterAndDisplayProducts() {
+    updateFilterButtonsAppearance();
+    const filteredProducts = activeFilter === 'all' 
+        ? allProductsData 
+        : allProductsData.filter(product => product.user_id && Number(product.user_id) === Number(CURRENT_USER_ID));
+    
+    if (filteredProducts.length === 0) { 
+        displayPageSection({ showEmpty: true }); 
+    } else { 
+        renderAllProductCards(filteredProducts); 
+        displayPageSection({ showGrid: true }); 
+    }
+}
+
+function renderAllProductCards(productItems) {
+    productGridContainer.innerHTML = '';
+    productItems.forEach(productItem => {
+        productGridContainer.appendChild(buildProductCardElement(productItem));
+    });
+}
+
 function buildProductCardElement(product) {
     const cardElement = document.createElement('div');
     cardElement.className = 'bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden flex flex-col';
     
     const detailLink = `{% url 'main:show_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
-    const editLink = `{% url 'main:edit_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
-    const deleteLink = `{% url 'main:delete_product' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', product.id);
     
+    const editDeleteHtml = CURRENT_USER_ID && product.user_id && Number(CURRENT_USER_ID) === Number(product.user_id) ? 
+        `<div class="flex space-x-2">
+            <a href="#" onclick="event.preventDefault(); openModal('update', '${product.id}')" class="text-gray-400 hover:text-gray-200 text-sm font-medium">Update</a>
+            <a href="#" onclick="event.preventDefault(); showDeleteModal('${product.id}', '${product.name}')" class="text-red-500 hover:text-red-300 text-sm font-medium">Delete</a>
+         </div>` : '';
+
     const name = DOMPurify.sanitize(product.name);
     const price = DOMPurify.sanitize(String(product.price));
     const description = DOMPurify.sanitize(product.description);
@@ -125,79 +248,84 @@ function buildProductCardElement(product) {
     const categoryLabel = DOMPurify.sanitize(getReadableProductCategory(product.category));
     const featuredBadge = product.is_featured ? `<span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-yellow-300 bg-yellow-700">Featured</span>` : '';
     const thumbnailHtml = thumbnail ? `<a href="${detailLink}"><img src="${thumbnail}" alt="${name}" class="w-full h-48 object-cover filter grayscale contrast-125"></a>` : '';
-    const editDeleteHtml = CURRENT_USER_ID && product.user_id && Number(CURRENT_USER_ID) === Number(product.user_id) ? `<div class="flex space-x-2"><a href="${editLink}" class="text-gray-400 hover:text-gray-200 text-sm font-medium">Edit</a><a href="${deleteLink}" class="text-red-500 hover:text-red-300 text-sm font-medium">Delete</a></div>` : '';
+    
+    cardElement.innerHTML = `
+        <div class="p-4 flex flex-col flex-grow">
+            <div class="mb-2 flex space-x-2">
+                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-200 bg-gray-600">${categoryLabel}</span>
+                ${featuredBadge}
+            </div>
+            <h2 class="text-xl font-bold text-white mb-2">
+                <a href="${detailLink}" class="hover:text-gray-400">${name}</a>
+            </h2>
+            <p class="text-gray-300 text-sm mb-1">Price: Rp${price}</p>
+            <p class="text-gray-400 text-xs mb-4">
+                Added on: ${formattedDate}
+            </p>
+            <p class="text-gray-200 text-sm flex-grow">${description.substring(0, 100)}...</p>
+        </div>
+        <div class="px-4 py-3 bg-gray-700 border-t border-gray-600 flex items-center justify-between">
+            <a href="${detailLink}" class="text-gray-400 hover:text-gray-200 font-medium text-sm">Read More</a>
+            ${editDeleteHtml}
+        </div>
+    `;
 
-    cardElement.innerHTML = `<div class="p-4 flex flex-col flex-grow"><div class="mb-2 flex space-x-2"><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-gray-200 bg-gray-600">${categoryLabel}</span>${featuredBadge}</div><h2 class="text-xl font-bold text-white mb-2"><a href="${detailLink}" class="hover:text-gray-400">${name}</a></h2><p class="text-gray-300 text-sm mb-1">Price: Rp${price}</p><p class="text-gray-400 text-xs mb-4">Added on: ${formattedDate}</p><p class="text-gray-200 text-sm flex-grow">${description.substring(0, 100)}...</p></div><div class="px-4 py-3 bg-gray-700 border-t border-gray-600 flex items-center justify-between"><a href="${detailLink}" class="text-gray-400 hover:text-gray-200 font-medium text-sm">Read More</a>${editDeleteHtml}</div>`;
-    if (thumbnail) { cardElement.insertAdjacentHTML('afterbegin', thumbnailHtml); }
+    if (thumbnail) { 
+        cardElement.insertAdjacentHTML('afterbegin', thumbnailHtml); 
+    }
+    
     return cardElement;
 }
 
-// Renders all product cards into the grid.
-function renderAllProductCards(productItems) {
-  productGridContainer.innerHTML = '';
-  productItems.forEach(productItem => {
-    const cardElement = buildProductCardElement(productItem);
-    productGridContainer.appendChild(cardElement);
-  });
+// Fungsi Utilitas Tampilan
+function updateFilterButtonsAppearance() {
+  if (!showAllProductsButton || !showMyProductsButton) return;
+  const activeClasses = 'cursor-pointer bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500';
+  const inactiveClasses = 'cursor-pointer bg-gray-700 text-gray-300 border border-gray-600 px-4 py-2 rounded-md font-medium transition-colors hover:bg-gray-500 hover:text-white';
+  if (activeFilter === 'all') { showAllProductsButton.className = activeClasses; showMyProductsButton.className = inactiveClasses; } 
+  else { showMyProductsButton.className = activeClasses; showAllProductsButton.className = inactiveClasses; }
 }
 
-// Filters and displays products based on the active filter.
-function filterAndDisplayProducts() {
-  updateFilterButtonsAppearance();
-  const filteredProducts = activeFilter === 'all' ? allProductsData : allProductsData.filter(product => product.user_id && Number(product.user_id) === Number(CURRENT_USER_ID));
-  if (filteredProducts.length === 0) {
-    displayPageSection({ showEmpty: true });
-  } else {
-    renderAllProductCards(filteredProducts);
-    displayPageSection({ showGrid: true });
-  }
+function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
+  loadingSpinner.classList.toggle('hidden', !showLoading);
+  errorMessage.classList.toggle('hidden', !showError);
+  emptyStateDisplay.classList.toggle('hidden', !showEmpty);
+  productGridContainer.classList.toggle('hidden', !showGrid);
 }
 
-// Fetches product data from the server API.
-async function fetchProductsFromServer() {
-  try {
-    displayPageSection({ showLoading: true });
-    const response = await fetch(PRODUCTS_API_ENDPOINT, { headers: { 'Accept': 'application/json' } });
-    if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
-    const productsData = await response.json();
-    allProductsData = productsData || [];
-    filterAndDisplayProducts();
-  } catch (error) {
-    console.error('Error loading products:', error);
-    displayPageSection({ showError: true });
-  }
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const isSuccess = type === 'success';
+    const icon = isSuccess ? '✅' : '❌';
+    const bgColor = isSuccess ? 'bg-green-500' : 'bg-red-500';
+    toast.className = `p-4 rounded-lg shadow-xl text-white flex items-center gap-3 transform transition-all duration-300 translate-y-4 opacity-0 ${bgColor}`;
+    toast.innerHTML = `<span class="text-xl">${icon}</span><p class="font-medium">${message}</p>`;
+    toastContainer.appendChild(toast);
+    setTimeout(() => { toast.classList.remove('translate-y-4', 'opacity-0'); }, 100);
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 3000);
 }
 
-// Sets up event listeners and fetches initial data.
+// Inisialisasi & Event Listeners
 function initializeProductPage() {
-  showAllProductsButton.addEventListener('click', () => {
-    activeFilter = 'all';
-    filterAndDisplayProducts();
-  });
-  showMyProductsButton.addEventListener('click', () => {
-    activeFilter = 'my';
-    filterAndDisplayProducts();
-  });
-  fetchProductsFromServer();
+    showAllProductsButton.addEventListener('click', () => { activeFilter = 'all'; filterAndDisplayProducts(); });
+    showMyProductsButton.addEventListener('click', () => { activeFilter = 'my'; filterAndDisplayProducts(); });
+    
+    // TAMBAHKAN INI:
+    document.getElementById('refresh-button').addEventListener('click', fetchProductsFromServer);
+    
+    fetchProductsFromServer();
 }
 
-// Initialize the page and event listeners
 initializeProductPage();
 
-// Event listener untuk refresh data setelah produk baru ditambahkan
-document.addEventListener('productAdded', function() {
+document.addEventListener('productRefreshed', function() {
     fetchProductsFromServer();
 });
 
-// Event listener ini sebaiknya ada di file yang sama dengan modal
-// atau pastikan modal sudah ada di DOM saat skrip ini dijalankan.
-// Jika modal di-load terpisah, event listener ini bisa dipindah.
-if (document.getElementById("productForm")) {
-    document.getElementById("productForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-        addProduct();
-    });
-}
 </script>
 
 {% endblock content %}
